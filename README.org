@@ -1,0 +1,14 @@
+#+TITLE: mxp-mac-grab.el
+
+Grab links from macOS applications and insert them into Emacs.
+
+This is inspired by [[https://github.com/xuchunyang/grab-mac-link.el][grab-mac-link]] and [[https://gitlab.com/aimebertrand/org-mac-link][org-mac-link]], but simpler, as I only really use Safari and the Finder (but it also supports Mail).
+
+The main difference is perhaps that it uses JavaScript for Applications (JXA) instead of AppleScript.  This has two advantages:
+
+1. It’s easier to include the code in Elisp, and you can directly copy it between Emacs and Script Editor.
+2. It allows us to get a structured value back from the application, so we don't have to construct  strings with special markers and then remove them again in Elisp.
+
+The downside is that there is very little documentation for JXA…
+
+There is only one interactive function, =mxp-mac-grab-link=.  Not everything is fully implemented.  In particular, currently only single items are supported.
