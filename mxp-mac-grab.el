@@ -1,4 +1,4 @@
-;;; Time-stamp: <2022-12-19T14:01:30+0100 mpiotrow>
+;;; Time-stamp: <2024-04-16T11:08:49+0200 mpiotrow>
 ;;; -*- coding: utf-8 -*-
 
 ;;; Inspired by grab-mac-link and org-mac-link, but simpler (I only
@@ -155,15 +155,19 @@ will be used."
 ;;; Utility functions
 
 (defun mxp-mac-grab-insert-plain (url &optional desc)
+  (push-mark)
   (insert url))
 
 (defun mxp-mac-grab-insert-markdown (url desc)
+  (push-mark)
   (insert "[" desc "](" url ")"))
 
 (defun mxp-mac-grab-insert-org (url desc)
+  (push-mark)
   (insert "[[" url "][" desc "]]"))
 
 (defun mxp-mac-grab-insert-latex (url desc)
+  (push-mark)
   (insert "\\url{" url "}"))
 
 (defun mxp-mac-unpack (obj)
