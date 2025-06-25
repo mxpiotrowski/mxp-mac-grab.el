@@ -1,18 +1,79 @@
-;;; Time-stamp: <2025-06-25T14:00:54+0200 mpiotrow>
-;;; -*- coding: utf-8 -*-
+;;; mxp-mac-grab.el --- Grab links from macOS applications and insert them into Emacs -*- lexical-binding: t -*-
 
-;;; Inspired by grab-mac-link and org-mac-link, but simpler (I only
-;;; use Safari and the Finder) and using JavaScript for Applications
-;;; (JXA) instead of AppleScript.  This allows us to get a structured
-;;; value back from the application, so we don't have to construct a
-;;; return string with a special marker and then remove it in Elisp.
+;; Author: Michael Piotrowski <mxp@dynalabs.de>
+;; Maintainer: Michael Piotrowski <mxp@dynalabs.de>
+;; Description: Grab links from macOS applications and insert them into Emacs
+;; Keywords: convenience hypermedia
+;; Version: 0.1
+;; URL: https://github.com/mxpiotrowski/mxp-mac-grab.el
+;; Package-Requires: bindat
+
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; This package provides one primary interactive function,
+;; `mxp-mac-grab-link', which obtains a link from certain macOS
+;; applications and inserts it at point in a variety of formats.
+
+;; Supported applications:
+;;
+;; - Safari (The URL of the frontmost tab in the frontmost window)
+;; - Finder (The filename (with path) of the currently selected file
+;;   or directory in the frontmost window)
+;; - Mail (message ID of the currently selected message)
+
+;; The following link formats are supported:
+;;
+;; - plain:    https://www.wikipedia.org/
+;; - markdown: [Wikipedia](https://www.wikipedia.org/)
+;; - org:      [[https://www.wikipedia.org/][Wikipedia]]
+;; - html:     <a href="https://www.wikipedia.org/">Wikipedia</a>
+;; - bibtex:   url = {https://www.wikipedia.org/}
+;;             file = {:wikipedia.pdf:PDF}
+;;
+;; There is only one interactive function, `mxp-mac-grab-link'.  It
+;; first prompts for the app and then for the format of the link to
+;; insert into the Emacs buffer.  Simply hitting return selects the
+;; default format.  For Org, Markdown, HTML, LaTeX, and BibTeX
+;; buffers, the default is to insert a link in the corresponding
+;; format.  For BibTeX, this is either a file or a url field.  For all
+;; other modes, the default is plain.
+
+;; This package is inspired by the grab-mac-link (URL
+;; `https://github.com/xuchunyang/grab-mac-link.el') and org-mac-link
+;; (URL `https://gitlab.com/aimebertrand/org-mac-link') packages.  The
+;; main differences are:
+;;
+;; - it only supports Safari, Finder, and Mail (this is all I need);
+;; - it uses JavaScript for Applications (JXA) instead of AppleScript.
+;;   This allows us to get a structured value back from the
+;;   application, so we don't have to construct a return string with a
+;;   special marker and then remove it in Elisp.
+;;
+;; You can select multiple files in Finder or messages in Mail, but
+;; currently you just get all links on a single line.
+
+;;; Code:
 
 (require 'bindat)
 
-;;;
+;;; The JXA scripts
 
-(setq mxp-mac-osa-scripts
-      '((finder . "var Finder = Application('Finder');
+(defvar mxp-mac-osa-scripts
+  '((finder . "
+var Finder = Application('Finder');
 var itemList = Finder.selection();
 var ret = [];
 
@@ -21,12 +82,12 @@ itemList.forEach(
 );
 
 ret;")
-        (safari . "var Safari = Application('Safari');
+    (safari . "var Safari = Application('Safari');
 var tab = Safari.windows[0].currentTab;
 
 [ decodeURI(tab.url()), tab.name() ];")
         
-        (fontbook . "
+    (fontbook . "
 var FontBook = Application('Font Book');
 var itemList = FontBook.selection();
 var ret = [];
@@ -38,7 +99,7 @@ itemList.forEach(
 		});
 ret;")
 
-        (mail . "
+    (mail . "
 var Mail = Application('Mail');
 var itemList = Mail.selection();
 var ret = [];
@@ -48,34 +109,37 @@ itemList.forEach(
 	item => { ret.push([ 'message:<' + item.messageId() + '>', item.subject() ]); }
 );
 
-ret;
-")))
+ret;"))
 
-;;;
+  "Plist of JXA scripts used by `mxp-mac-query-app' to obtain a link
+to the current item.")
+
+;;; Functions
 
 (defun mxp-mac-query-app (app)
+  "Query macOS application APP using the corresponding script from `mxp-mac-osa-scripts'.
+
+Return one or more links (in the latter case, as a list).  Each
+link is a list, where the car is the URL and the cdr is the
+description."
   (mxp-mac-unpack
    (mac-osa-script (alist-get app mxp-mac-osa-scripts) "JavaScript" nil t)))
 
-(defun mxp-mac-grab-link (app &optional link-type)
+(defun mxp-mac-grab-link (app &optional link-format)
   "Prompt for an application to grab a link from.
 When done, go grab the link, and insert it at point.
 
-[FIXME] With a prefix argument, instead of \"insert\", save it to
-kill-ring. For org link, save it to `org-stored-links', then
-later you can insert it via `org-insert-link'.
-
-[FIXME] If called from lisp, grab link from APP and return it (as a
-string) with LINK-TYPE.  APP is a symbol and must be one of
-'(safari finder), LINK-TYPE is also a symbol and must be one of
-'(plain markdown org), if LINK-TYPE is omitted or nil, plain link
+If called from lisp, grab link from APP and return it (as a
+string) with LINK-FORMAT.  APP is a symbol and must be one of
+'(safari finder), LINK-FORMAT is also a symbol and must be one of
+'(plain markdown org), if LINK-FORMAT is omitted or nil, plain link
 will be used."
   (interactive
    (let ((apps
           '((?s . safari)
             (?f . finder)
             (?m . mail)))
-         (link-types
+         (link-formats
           '((?p . plain)
             (?m . markdown)
             (?o . org)
@@ -91,7 +155,7 @@ will be used."
               (while (re-search-forward "\\[\\(.+?\\)\\]" nil 'no-error)
                 (replace-match (format "[%s]" (propertize (match-string 1) 'face 'bold))))
               (buffer-string))))
-         input app link-type)
+         input app link-format)
      (let ((message-log-max nil))
        (message (funcall propertize-menu
                          "Grab link from [s]afari [f]inder [m]ail:")))
@@ -102,11 +166,11 @@ will be used."
        (message (funcall propertize-menu
                          (format "Grab link from %s as a [p]lain [m]arkdown [o]rg [h]tml [l]atex link:" app))))
      (setq input (read-char-exclusive))
-     (setq link-type (cdr (assq input link-types)))
-     (list app link-type)))
+     (setq link-format (cdr (assq input link-formats)))
+     (list app link-format)))
 
-  (setq link-type
-        (or link-type
+  (setq link-format
+        (or link-format
             (cond ((derived-mode-p 'org-mode) 'org)
                   ((derived-mode-p 'markdown-mode) 'markdown)
                   ((derived-mode-p 'html-mode) 'html)
@@ -115,38 +179,32 @@ will be used."
 	          (t 'plain))))
   
   (unless (and (memq app '(safari finder mail))
-               (memq link-type '(plain org markdown html latex bibtex)))
-    (error "Unknown app %s or link-type %s" app link-type))
+               (memq link-format '(plain org markdown html latex bibtex)))
+    (error "Unknown app %s or link-format %s" app link-format))
 
-  ;; this is the original code from `grab-mac-link'
-  ;; (let* ((grab-link-func (intern (format "grab-mac-link-%s-1" app)))
-  ;;        (make-link-func (intern (format "grab-mac-link-make-%s-link" link-type)))
-  ;;        (link (apply make-link-func (funcall grab-link-func))))
-  ;;   (when (called-interactively-p 'any)
-  ;;     (if current-prefix-arg
-  ;;         (if (eq link-type 'org)
-  ;;             (let* ((res (funcall grab-link-func))
-  ;;                    (link (car res))
-  ;;                    (desc (cadr res)))
-  ;;               (push (list link desc) org-stored-links)
-  ;;               (message "Stored: %s" desc))
-  ;;           (kill-new link)
-  ;;           (message "Copied: %s" link))
-  ;;       (insert link)))
-  ;;   link)
-
-  ;; Need to think about the interfaces.
+  ;; [TODO] Think about the interfaces.
   (let ((response   (mxp-mac-query-app app))
-        (insert-fun (intern (format "mxp-mac-grab-insert-%s" link-type))))
+        (insert-fun (intern (format "mxp-mac-grab-insert-%s" link-format))))
     (if (listp (car response))
         (dolist (item (mxp-mac-query-app app))
           (funcall insert-fun (car item) (cadr item)))
-      (funcall insert-fun  (car response) (cadr response))
-      )
-    )
-  )
+      (funcall insert-fun  (car response) (cadr response)))))
 
-;;; Utility functions
+;;; Convenience function useful for writing small utility functions
+
+(defun mxp-grab-file-relative ()
+  "Return name (with path) of selected file or directory in Finder.
+
+If the file or directory shares a path prefix with the current buffer,
+return a relative name.
+
+If more than one file is selected, just return the first one."
+
+  (string-remove-prefix
+   (url-basepath (buffer-file-name))
+   (string-remove-prefix "file://" (caar (mxp-mac-query-app 'finder)))))
+
+;;; Formating functions
 
 (defun mxp-mac-grab-insert-plain (url &optional desc)
   (push-mark)
@@ -192,11 +250,13 @@ will be used."
       (bibtex-make-field
        `("file" "" ,(concat ":" abbrev-path ":" filetype) nil) t t))))
 
+;;; OSA helper function
+
 (defun mxp-mac-unpack (obj)
   "Unpack the results from `mac-osa-script' when VALUE-FORM is t.
 
 This function currently handles only lists of strings and longs."
-(let ((type  (car obj))
+  (let ((type  (car obj))
         (value (cdr obj)))
     ;; lists
     (if (string-equal "list" type)
@@ -212,24 +272,9 @@ This function currently handles only lists of strings and longs."
         (let* ((u32 (bindat-get-field
                      (bindat-unpack '((u u32r)) value) 'u)))
           (if (> u32 #x7fffffff)
-              (logior -4294967296 u32) u32))
-        ))
-      )))
-
-;;; This is already OK
-
-(defun mxp-grab-file-relative ()
-  "Return name (with path) of selected file or directory in Finder.
-
-If the file or directory shares a path prefix with the current buffer,
-return a relative name.
-
-If more than one file is selected, just return the first one."
-
-  (string-remove-prefix
-   (url-basepath (buffer-file-name))
-   (string-remove-prefix "file://" (caar (mxp-mac-query-app 'finder)))))
-
-;;;
+              (logior -4294967296 u32) u32)))))))
 
 (provide 'mxp-mac-grab)
+
+;;; mxp-mac-grab.el ends here
+
