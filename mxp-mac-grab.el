@@ -1,4 +1,4 @@
-;;; Time-stamp: <2025-06-25T13:20:31+0200 mpiotrow>
+;;; Time-stamp: <2025-06-25T14:00:54+0200 mpiotrow>
 ;;; -*- coding: utf-8 -*-
 
 ;;; Inspired by grab-mac-link and org-mac-link, but simpler (I only
@@ -6,15 +6,6 @@
 ;;; (JXA) instead of AppleScript.  This allows us to get a structured
 ;;; value back from the application, so we don't have to construct a
 ;;; return string with a special marker and then remove it in Elisp.
-
-;;; Useful stuff:
-;;; - https://github.com/JXA-Cookbook/JXA-Cookbook/wiki
-;;; - https://www.galvanist.com/posts/2020-03-28-jxa_notes/
-;;; - https://github.com/josh-/automating-macOS-with-JXA-presentation/blob/master/Automating macOS with Javascript for Automation (JXA).md
-;;; - https://bru6.de/jxa/basics/working-with-apps/
-;;; - https://stackoverflow.com/questions/45426227/get-posix-path-of-active-finder-window-with-jxa-applescript
-;;; - https://github.com/atomontage/osa
-;;; - https://github.com/akjems/JXA-Examples
 
 (require 'bindat)
 
@@ -192,12 +183,14 @@ will be used."
                     ((string-suffix-p ".pdf" path t) "PDF")
                     ((string-suffix-p ".djvu" path t) "DJVU")))
          (abbrev-path ""))
-    (if (string-match (concat "\\(" abbreviated-home-dir "\\)") path)
-        (setq abbrev-path (replace-match "~/" nil nil path 1)))
     (push-mark)
-    (bibtex-make-field `("file" ""
-                         ,(concat ":" abbrev-path ":" filetype) nil)
-                       t t)))
+    (if (string-equal url path)         ; i.e., not a file URL
+        (bibtex-make-field `("url" "" ,url nil) t t)
+      (if (string-match (concat "\\(" abbreviated-home-dir "\\)") path)
+          (setq abbrev-path (replace-match "~/" nil nil path 1)))
+    
+      (bibtex-make-field
+       `("file" "" ,(concat ":" abbrev-path ":" filetype) nil) t t))))
 
 (defun mxp-mac-unpack (obj)
   "Unpack the results from `mac-osa-script' when VALUE-FORM is t.
