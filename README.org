@@ -4,18 +4,20 @@
 
 Grab links from macOS applications and insert them into Emacs.
 
-This is inspired by [[https://github.com/xuchunyang/grab-mac-link.el][grab-mac-link]] and [[https://gitlab.com/aimebertrand/org-mac-link][org-mac-link]], but simpler, as I only really use Safari and the Finder (but it also supports Mail).
+*NOTE:* This package requires Mitsuharu Yamamoto's [[https://bitbucket.org/mituharu/emacs-mac/][Emacs Mac port]].
 
-The main difference is perhaps that it uses JavaScript for Applications (JXA) instead of AppleScript.  This has two advantages:
+This is inspired by [[https://github.com/xuchunyang/grab-mac-link.el][grab-mac-link]] and [[https://gitlab.com/aimebertrand/org-mac-link][org-mac-link]], but simpler, as I only really use Safari and the Finder (but it also supports Mail and Preview).
+
+The main difference is perhaps that it uses JavaScript for Applications (JXA) instead of AppleScript.  This is why this package requires the ~mac-osa-script~ function provided by the Emacs Mac port.  The use of JXA has two advantages:
 
 1. It’s easier to include the code in Elisp, and you can directly copy it between Emacs and Script Editor.
-2. It allows us to get a structured value back from the application, so we don't have to construct  strings with special markers and then remove them again in Elisp.
+2. It allows us to get a structured value back from the application, so we don't have to construct strings with special markers and then remove them again in Elisp.
 
-The downside is that there is very little documentation for JXA (see below for some useful links).
+The downside is that there is very little documentation for JXA (but see below for some useful links).
 
 * Description
 
-There is only one interactive function, =mxp-mac-grab-link=.  You’re first prompted for the app (Safari, Finder, or Mail) and then for the format of the link to insert into the Emacs buffer.  Simply hitting return selects the default format.  For Org, Markdown, HTML, LaTeX, and BibTeX, the default is to insert a link in the corresponding format.  For BibTeX, this is either a =file= or a =url= field.
+There is only one interactive function, =mxp-mac-grab-link=.  You’re first prompted for the app (Safari, Finder, Mail, or Preview) and then for the format of the link to insert into the Emacs buffer.  Simply hitting return selects the default format.  For Org, Markdown, HTML, LaTeX, and BibTeX, the default is to insert a link in the corresponding format.  For BibTeX, this is either a =file= or a =url= field, depending on the URL scheme.
 
 * Useful JXA Links
 
@@ -27,6 +29,7 @@ Some useful links:
 - [[https://stackoverflow.com/questions/45426227/get-posix-path-of-active-finder-window-with-jxa-applescript][Stack Overflow: Get POSIX path of active Finder window with JXA AppleScript]] 
 - [[https://github.com/atomontage/osa][Emacs Lisp to Open Scripting Architecture (AppleScript/JavaScript) bridge]]
 - [[https://github.com/a-bangk/JXA-Examples][Pieces of JXA (Javascript for Automation) example code]]
+- [[https://taoofmac.com/space/dev/javascript/jxa][Tao of Mac: JXA (JavaScript for Automation)]]
 
 * License
 This package is published under the GNU GENERAL PUBLIC LICENSE version 3.

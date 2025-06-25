@@ -27,12 +27,17 @@
 ;; `mxp-mac-grab-link', which obtains a link from certain macOS
 ;; applications and inserts it at point in a variety of formats.
 
+;; This package requires Mitsuharu Yamamoto's Emacs Mac port (see URL
+;; https://bitbucket.org/mituharu/emacs-mac/).
+
 ;; Supported applications:
 ;;
-;; - Safari (The URL of the frontmost tab in the frontmost window)
-;; - Finder (The filename (with path) of the currently selected file
+;; - Safari (the URL of the frontmost tab in the frontmost window)
+;; - Finder (the filename (with path) of the currently selected file
 ;;   or directory in the frontmost window)
 ;; - Mail (message ID of the currently selected message)
+;; - Preview (the filename (with path) of the document in the frontmost
+;;   window)
 
 ;; The following link formats are supported:
 ;;
@@ -56,7 +61,7 @@
 ;; (URL `https://gitlab.com/aimebertrand/org-mac-link') packages.  The
 ;; main differences are:
 ;;
-;; - it only supports Safari, Finder, and Mail (this is all I need);
+;; - it only supports Safari, Finder, Mail, and Preview (this is all I need);
 ;; - it uses JavaScript for Applications (JXA) instead of AppleScript.
 ;;   This allows us to get a structured value back from the
 ;;   application, so we don't have to construct a return string with a
@@ -82,11 +87,7 @@ itemList.forEach(
 );
 
 ret;")
-    (safari . "var Safari = Application('Safari');
-var tab = Safari.windows[0].currentTab;
 
-[ decodeURI(tab.url()), tab.name() ];")
-        
     (fontbook . "
 var FontBook = Application('Font Book');
 var itemList = FontBook.selection();
@@ -109,7 +110,18 @@ itemList.forEach(
 	item => { ret.push([ 'message:<' + item.messageId() + '>', item.subject() ]); }
 );
 
-ret;"))
+ret;")
+    
+    (safari . "
+var Safari = Application('Safari');
+var tab = Safari.windows[0].currentTab;
+
+[ decodeURI(tab.url()), tab.name() ];")
+        
+    (preview . "
+var app = Application('Preview');
+var doc = app.windows[0].document();
+[ 'file://' + doc.path(), doc.name() ];"))
 
   "Plist of JXA scripts used by `mxp-mac-query-app' to obtain a link
 to the current item.")
@@ -131,14 +143,15 @@ When done, go grab the link, and insert it at point.
 
 If called from lisp, grab link from APP and return it (as a
 string) with LINK-FORMAT.  APP is a symbol and must be one of
-'(safari finder), LINK-FORMAT is also a symbol and must be one of
-'(plain markdown org), if LINK-FORMAT is omitted or nil, plain link
-will be used."
+'(safari finder mail preview), LINK-FORMAT is also a symbol and
+must be one of '(plain markdown org html latex bibtex), if
+LINK-FORMAT is omitted or nil, plain link will be used."
   (interactive
    (let ((apps
           '((?s . safari)
             (?f . finder)
-            (?m . mail)))
+            (?m . mail)
+            (?p . preview)))
          (link-formats
           '((?p . plain)
             (?m . markdown)
@@ -158,7 +171,7 @@ will be used."
          input app link-format)
      (let ((message-log-max nil))
        (message (funcall propertize-menu
-                         "Grab link from [s]afari [f]inder [m]ail:")))
+                         "Grab link from [s]afari [f]inder [m]ail [p]review:")))
      (setq input (read-char-exclusive))
      (setq app (cdr (assq input apps)))
      (let ((message-log-max nil))
@@ -178,7 +191,7 @@ will be used."
                   ((derived-mode-p 'bibtex-mode) 'bibtex)
 	          (t 'plain))))
   
-  (unless (and (memq app '(safari finder mail))
+  (unless (and (memq app '(safari finder mail preview))
                (memq link-format '(plain org markdown html latex bibtex)))
     (error "Unknown app %s or link-format %s" app link-format))
 
