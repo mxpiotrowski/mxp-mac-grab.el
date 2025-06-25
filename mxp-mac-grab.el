@@ -1,4 +1,4 @@
-;;; Time-stamp: <2025-06-25T13:07:56+0200 mpiotrow>
+;;; Time-stamp: <2025-06-25T13:20:31+0200 mpiotrow>
 ;;; -*- coding: utf-8 -*-
 
 ;;; Inspired by grab-mac-link and org-mac-link, but simpler (I only
@@ -88,8 +88,8 @@ will be used."
           '((?p . plain)
             (?m . markdown)
             (?o . org)
-            (?h . html)  ; not yet implemented
-            (?l . latex) ; not yet implemented
+            (?h . html)
+            (?l . latex)
             (?b . bibtex)))
          (propertize-menu
           (lambda (string)
@@ -107,7 +107,7 @@ will be used."
      (setq input (read-char-exclusive))
      (setq app (cdr (assq input apps)))
      (let ((message-log-max nil))
-       ;; bibtex only really makes sense in bibtex-mode, so we don't list it
+       ;; bibtex only really makes sense in bibtex-mode, so we don't list it here
        (message (funcall propertize-menu
                          (format "Grab link from %s as a [p]lain [m]arkdown [o]rg [h]tml [l]atex link:" app))))
      (setq input (read-char-exclusive))
