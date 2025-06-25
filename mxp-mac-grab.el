@@ -1,4 +1,4 @@
-;;; Time-stamp: <2024-04-16T11:08:49+0200 mpiotrow>
+;;; Time-stamp: <2025-06-25T13:07:56+0200 mpiotrow>
 ;;; -*- coding: utf-8 -*-
 
 ;;; Inspired by grab-mac-link and org-mac-link, but simpler (I only
@@ -53,7 +53,8 @@ var itemList = Mail.selection();
 var ret = [];
 
 itemList.forEach(
-	item => { ret.push([ 'message://' + item.messageId(), item.subject() ]); }
+	// item => { ret.push([ 'message://' + item.messageId(), item.subject() ]); }
+	item => { ret.push([ 'message:<' + item.messageId() + '>', item.subject() ]); }
 );
 
 ret;
@@ -89,7 +90,7 @@ will be used."
             (?o . org)
             (?h . html)  ; not yet implemented
             (?l . latex) ; not yet implemented
-            ))
+            (?b . bibtex)))
          (propertize-menu
           (lambda (string)
             "Propertize substring between [] in STRING."
@@ -106,6 +107,7 @@ will be used."
      (setq input (read-char-exclusive))
      (setq app (cdr (assq input apps)))
      (let ((message-log-max nil))
+       ;; bibtex only really makes sense in bibtex-mode, so we don't list it
        (message (funcall propertize-menu
                          (format "Grab link from %s as a [p]lain [m]arkdown [o]rg [h]tml [l]atex link:" app))))
      (setq input (read-char-exclusive))
@@ -118,10 +120,11 @@ will be used."
                   ((derived-mode-p 'markdown-mode) 'markdown)
                   ((derived-mode-p 'html-mode) 'html)
 	          ((derived-mode-p 'latex-mode) 'latex)
+                  ((derived-mode-p 'bibtex-mode) 'bibtex)
 	          (t 'plain))))
   
   (unless (and (memq app '(safari finder mail))
-               (memq link-type '(plain org markdown html latex)))
+               (memq link-type '(plain org markdown html latex bibtex)))
     (error "Unknown app %s or link-type %s" app link-type))
 
   ;; this is the original code from `grab-mac-link'
@@ -166,9 +169,35 @@ will be used."
   (push-mark)
   (insert "[[" url "][" desc "]]"))
 
-(defun mxp-mac-grab-insert-latex (url desc)
+(defun mxp-mac-grab-insert-html (url desc)
   (push-mark)
-  (insert "\\url{" url "}"))
+  (insert "<a href=\"" url "\">" desc "</a>"))
+
+(defun mxp-mac-grab-insert-latex (url &optional desc)
+  ;; [TODO] Currently, when getting a file path, we try turning it
+  ;; into a relative path.  However, \url{} doesn't really make sense
+  ;; then.  Local paths are probably almost always images, but should
+  ;; we just insert \includegraphics{}, or let the user choose?
+  (let* ((path (string-remove-prefix "file://" url))
+         (relative-path (string-remove-prefix
+                         (url-basepath (buffer-file-name)) path)))
+    (push-mark)
+    (if desc
+        (insert "\\href{" relative-path "}{" desc "}")    
+      (insert "\\url{" relative-path "}"))))
+
+(defun mxp-mac-grab-insert-bibtex (url &optional desc)
+  (let* ((path (string-remove-prefix "file://" url))
+         (filetype (cond
+                    ((string-suffix-p ".pdf" path t) "PDF")
+                    ((string-suffix-p ".djvu" path t) "DJVU")))
+         (abbrev-path ""))
+    (if (string-match (concat "\\(" abbreviated-home-dir "\\)") path)
+        (setq abbrev-path (replace-match "~/" nil nil path 1)))
+    (push-mark)
+    (bibtex-make-field `("file" ""
+                         ,(concat ":" abbrev-path ":" filetype) nil)
+                       t t)))
 
 (defun mxp-mac-unpack (obj)
   "Unpack the results from `mac-osa-script' when VALUE-FORM is t.
