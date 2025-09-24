@@ -42,6 +42,7 @@
 ;; The following link formats are supported:
 ;;
 ;; - plain:    https://www.wikipedia.org/
+;; - angle-brackets: <https://www.wikipedia.org/>
 ;; - markdown: [Wikipedia](https://www.wikipedia.org/)
 ;; - org:      [[https://www.wikipedia.org/][Wikipedia]]
 ;; - html:     <a href="https://www.wikipedia.org/">Wikipedia</a>
@@ -144,8 +145,9 @@ When done, go grab the link, and insert it at point.
 If called from lisp, grab link from APP and return it (as a
 string) with LINK-FORMAT.  APP is a symbol and must be one of
 '(safari finder mail preview), LINK-FORMAT is also a symbol and
-must be one of '(plain markdown org html latex bibtex), if
-LINK-FORMAT is omitted or nil, plain link will be used."
+must be one of '(plain angle-brackets markdown org html latex
+bibtex), if LINK-FORMAT is omitted or nil, plain link will be
+used."
   (interactive
    (let ((apps
           '((?s . safari)
@@ -154,6 +156,7 @@ LINK-FORMAT is omitted or nil, plain link will be used."
             (?p . preview)))
          (link-formats
           '((?p . plain)
+            (?a . angle-brackets)
             (?m . markdown)
             (?o . org)
             (?h . html)
@@ -177,7 +180,7 @@ LINK-FORMAT is omitted or nil, plain link will be used."
      (let ((message-log-max nil))
        ;; bibtex only really makes sense in bibtex-mode, so we don't list it here
        (message (funcall propertize-menu
-                         (format "Grab link from %s as a [p]lain [m]arkdown [o]rg [h]tml [l]atex link:" app))))
+                         (format "Grab link from %s as a [p]lain [a]ngle-brackets [m]arkdown [o]rg [h]tml [l]atex link:" app))))
      (setq input (read-char-exclusive))
      (setq link-format (cdr (assq input link-formats)))
      (list app link-format)))
@@ -189,10 +192,12 @@ LINK-FORMAT is omitted or nil, plain link will be used."
                   ((derived-mode-p 'html-mode) 'html)
 	          ((derived-mode-p 'latex-mode) 'latex)
                   ((derived-mode-p 'bibtex-mode) 'bibtex)
+                  ((derived-mode-p 'message-mode) 'angle-brackets)
 	          (t 'plain))))
   
   (unless (and (memq app '(safari finder mail preview))
-               (memq link-format '(plain org markdown html latex bibtex)))
+               (memq link-format
+                     '(plain angle-brackets org markdown html latex bibtex)))
     (error "Unknown app %s or link-format %s" app link-format))
 
   ;; [TODO] Think about the interfaces.
@@ -222,6 +227,10 @@ If more than one file is selected, just return the first one."
 (defun mxp-mac-grab-insert-plain (url &optional desc)
   (push-mark)
   (insert url))
+
+(defun mxp-mac-grab-insert-angle-brackets (url &optional desc)
+  (push-mark)
+  (insert "<" url ">"))
 
 (defun mxp-mac-grab-insert-markdown (url desc)
   (push-mark)
