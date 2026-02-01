@@ -178,9 +178,8 @@ remains unchanged.  This should probably avoided anyway."
                          (let* ((command-char (char-to-string (car item)))
                                 (name (symbol-name (cdr item)))
                                 (pos-in-string (string-search command-char name)))
-                           (replace-regexp-in-string (concat "\\(" command-char "\\).*\\'" )
-                                                     "[\\1]"
-                                                     name nil nil 1)))
+                           (replace-regexp-in-string (concat "\\(" command-char "\\).*\\'")
+                                                     "[\\1]" name nil nil 1)))
                        options " ")))
          (propertize-menu
           (lambda (string)
@@ -212,7 +211,7 @@ remains unchanged.  This should probably avoided anyway."
                   ((derived-mode-p 'html-mode) 'html)
 	          ((derived-mode-p 'latex-mode) 'latex)
                   ((derived-mode-p 'bibtex-mode) 'bibtex)
-                  ((derived-mode-p 'typst-mode) 'typst)
+                  ((derived-mode-p 'typst--base-mode) 'typst)
                   ((derived-mode-p 'message-mode) 'angle-brackets)
 	          (t 'plain))))
   
