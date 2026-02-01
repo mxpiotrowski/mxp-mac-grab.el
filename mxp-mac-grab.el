@@ -146,8 +146,8 @@ If called from lisp, grab link from APP and return it (as a
 string) with LINK-FORMAT.  APP is a symbol and must be one of
 '(safari finder mail preview), LINK-FORMAT is also a symbol and
 must be one of '(plain angle-brackets markdown org html latex
-bibtex), if LINK-FORMAT is omitted or nil, plain link will be
-used."
+bibtex typst), if LINK-FORMAT is omitted or nil, plain link will
+be used."
   (interactive
    (let ((apps
           '((?s . safari)
@@ -161,7 +161,27 @@ used."
             (?o . org)
             (?h . html)
             (?l . latex)
-            (?b . bibtex)))
+            (?b . bibtex)
+            (?t . typst)))
+         (build-menu-string
+          (lambda (options)
+            "Construct a menu string from OPTIONS.
+
+OPTIONS is expected to be an alist consisting of pairs of command
+char and option symbol (the name).  The function concatenates the options
+into a string, with the first occurrence of the command char
+enclosed in brackets.
+
+If the command char doesn't occur in the symbol, the option name
+remains unchanged.  This should probably avoided anyway."
+            (mapconcat (lambda (item)
+                         (let* ((command-char (char-to-string (car item)))
+                                (name (symbol-name (cdr item)))
+                                (pos-in-string (string-search command-char name)))
+                           (replace-regexp-in-string (concat "\\(" command-char "\\).*\\'" )
+                                                     "[\\1]"
+                                                     name nil nil 1)))
+                       options " ")))
          (propertize-menu
           (lambda (string)
             "Propertize substring between [] in STRING."
@@ -174,13 +194,13 @@ used."
          input app link-format)
      (let ((message-log-max nil))
        (message (funcall propertize-menu
-                         "Grab link from [s]afari [f]inder [m]ail [p]review:")))
+                         (concat "Grab link from " (funcall build-menu-string apps) ":"))))
      (setq input (read-char-exclusive))
      (setq app (cdr (assq input apps)))
      (let ((message-log-max nil))
-       ;; bibtex only really makes sense in bibtex-mode, so we don't list it here
        (message (funcall propertize-menu
-                         (format "Grab link from %s as a [p]lain [a]ngle-brackets [m]arkdown [o]rg [h]tml [l]atex link:" app))))
+                         (format "Grab link from %s as a %s link"
+                                 app (funcall build-menu-string link-formats)))))
      (setq input (read-char-exclusive))
      (setq link-format (cdr (assq input link-formats)))
      (list app link-format)))
@@ -192,12 +212,14 @@ used."
                   ((derived-mode-p 'html-mode) 'html)
 	          ((derived-mode-p 'latex-mode) 'latex)
                   ((derived-mode-p 'bibtex-mode) 'bibtex)
+                  ((derived-mode-p 'typst-mode) 'typst)
                   ((derived-mode-p 'message-mode) 'angle-brackets)
 	          (t 'plain))))
   
   (unless (and (memq app '(safari finder mail preview))
                (memq link-format
-                     '(plain angle-brackets org markdown html latex bibtex)))
+                     '(plain angle-brackets org markdown html
+                             latex bibtex typst)))
     (error "Unknown app %s or link-format %s" app link-format))
 
   ;; [TODO] Think about the interfaces.
@@ -271,6 +293,10 @@ If more than one file is selected, just return the first one."
     
       (bibtex-make-field
        `("file" "" ,(concat ":" abbrev-path ":" filetype) nil) t t))))
+
+(defun mxp-mac-grab-insert-typst (url desc)
+  (push-mark)
+  (insert "#link(\"" url "\")[" desc "]"))
 
 ;;; OSA helper function
 
