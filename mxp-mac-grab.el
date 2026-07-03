@@ -69,7 +69,8 @@
 ;;   special marker and then remove it in Elisp.
 ;;
 ;; You can select multiple files in Finder or messages in Mail, but
-;; currently you just get all links on a single line.
+;; currently you just get all links on a single line—except in org,
+;; other formats are [TODO].
 
 ;;; Code:
 
@@ -226,7 +227,7 @@ remains unchanged.  This should probably avoided anyway."
         (insert-fun (intern (format "mxp-mac-grab-insert-%s" link-format))))
     (if (listp (car response))
         (dolist (item (mxp-mac-query-app app))
-          (funcall insert-fun (car item) (cadr item)))
+          (funcall insert-fun (car item) (cadr item) 'list))
       (funcall insert-fun  (car response) (cadr response)))))
 
 ;;; Convenience function useful for writing small utility functions
@@ -245,27 +246,27 @@ If more than one file is selected, just return the first one."
 
 ;;; Formating functions
 
-(defun mxp-mac-grab-insert-plain (url &optional desc)
+(defun mxp-mac-grab-insert-plain (url &optional desc style)
   (push-mark)
   (insert url))
 
-(defun mxp-mac-grab-insert-angle-brackets (url &optional desc)
+(defun mxp-mac-grab-insert-angle-brackets (url &optional desc style)
   (push-mark)
   (insert "<" url ">"))
 
-(defun mxp-mac-grab-insert-markdown (url desc)
+(defun mxp-mac-grab-insert-markdown (url desc &optional style)
   (push-mark)
   (insert "[" desc "](" url ")"))
 
-(defun mxp-mac-grab-insert-org (url desc)
+(defun mxp-mac-grab-insert-org (url desc &optional style)
   (push-mark)
   (insert "[[" url "][" desc "]]"))
 
-(defun mxp-mac-grab-insert-html (url desc)
+(defun mxp-mac-grab-insert-html (url desc &optional style)
   (push-mark)
   (insert "<a href=\"" url "\">" desc "</a>"))
 
-(defun mxp-mac-grab-insert-latex (url &optional desc)
+(defun mxp-mac-grab-insert-latex (url &optional desc style)
   ;; [TODO] Currently, when getting a file path, we try turning it
   ;; into a relative path.  However, \url{} doesn't really make sense
   ;; then.  Local paths are probably almost always images, but should
@@ -278,7 +279,7 @@ If more than one file is selected, just return the first one."
         (insert "\\href{" relative-path "}{" desc "}")    
       (insert "\\url{" relative-path "}"))))
 
-(defun mxp-mac-grab-insert-bibtex (url &optional desc)
+(defun mxp-mac-grab-insert-bibtex (url &optional desc style)
   (let* ((path (string-remove-prefix "file://" url))
          (filetype (cond
                     ((string-suffix-p ".pdf" path t) "PDF")
@@ -293,7 +294,7 @@ If more than one file is selected, just return the first one."
       (bibtex-make-field
        `("file" "" ,(concat ":" abbrev-path ":" filetype) nil) t t))))
 
-(defun mxp-mac-grab-insert-typst (url desc)
+(defun mxp-mac-grab-insert-typst (url desc &optional style)
   (push-mark)
   (insert "#link(\"" url "\")[" desc "]"))
 
